@@ -1,0 +1,72 @@
+name: Build and release dictionary for Fcitx5 and RIME
+
+on:
+  schedule:
+    - cron: '30 0 1 * *'
+  workflow_dispatch:
+
+jobs:
+  build_and_release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Prepare Environment for Fetch
+        run: pip3 install beautifulsoup4
+
+      - name: Fetch Sougou dict
+        run: |
+          python3 SougouSpider.py
+
+      - name: Prepare Environment for Build
+        run: |
+          sudo apt install dotnet-runtime-8.0
+          sudo apt install libime-bin
+
+          wget https://github.com/studyzy/imewlconverter/releases/download/preview/imewlconverter_Linux.tar.gz
+          tar -zxf imewlconverter_Linux.tar.gz
+
+      - name: Build
+        run: |
+          echo "${GITHUB_WORKSPACE}/publish" >> "$GITHUB_PATH"
+          make sougou.dict sougou.dict.yaml
+          tar -zcf sougou_dict.tar.gz sougou_dict
+
+      - name: Get date
+        id: date
+        run: echo "date=$(date +%Y%m%d)" >> "$GITHUB_OUTPUT"
+
+      - name: Release
+        uses: ncipollo/release-action@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          artifacts: "sougou.dict sougou.dict.yaml sougou_dict.tar.gz"
+          commit: ${{ github.sha }}
+          tag: ${{ steps.date.outputs.date }}
+          allowUpdates: true
+
+  update_recipe_yaml:
+    needs: build_and_release
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get date
+        id: date
+        run: echo "date=$(date +%Y%m%d)" >> "$GITHUB_OUTPUT"
+
+      - name: Update recipe.yaml
+        run: |
+          sed -i -e '8s/[0-9]\{8\}/${{ steps.date.outputs.date }}/g' recipe.yaml
+
+      - name: Commit & Push data
+        uses: actions-js/push@master
+        with:
+           github_token: ${{ secrets.GITHUB_TOKEN }}
+           message: "Chore: Update recipe.yaml"

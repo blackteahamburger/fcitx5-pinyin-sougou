@@ -1,0 +1,10 @@
+# encoding: utf-8
+---
+recipe:
+  Rx: sougou-dict
+  description: >-
+    Install Sougou Pinyin dictionary from fcitx5-pinyin-sougou
+download_files: >-
+  sougou.dict.yaml::https://github.com/blackteahamburger/fcitx5-pinyin-sougou/releases/download/00000000/sougou-00000000.dict.yaml
+install_files: >-
+  sougou.dict.yaml
