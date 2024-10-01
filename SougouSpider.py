@@ -14,7 +14,7 @@ class SougouSpider:
 			"Connection": "keep-alive",
 		}
 
-	def GetHtml(self, url):
+	def get_html(self, url):
 		try:
 			session = requests.Session()
 			session.mount("https://", requests.adapters.HTTPAdapter(max_retries=5))
@@ -22,74 +22,74 @@ class SougouSpider:
 		except requests.exceptions.Timeout as e:
 			print(e)
 
-	def Download(self, downloadUrls, categoryPath):
-		for keyDownload, urlDownload in downloadUrls.items():
-			filePath = categoryPath + "/" + keyDownload + ".scel"
-			if os.path.exists(filePath):
-				print(f"{keyDownload}.scel already exists, skipping...")
+	def download(self, download_urls, category_path):
+		for key_download, url_download in download_urls.items():
+			file_path = category_path + "/" + key_download + ".scel"
+			if os.path.exists(file_path):
+				print(f"{key_download}.scel already exists, skipping...")
 			else:
-				with open(filePath, "wb") as fw:
-					fw.write(self.GetHtml(urlDownload).content)
-					print(f"{keyDownload}.scel download succeeded.")
+				with open(file_path, "wb") as fw:
+					fw.write(self.get_html(url_download).content)
+					print(f"{key_download}.scel download succeeded.")
 
-	def DownloadDicts(self, savePath, categories=None, skip_category=False):
-		if not os.path.exists(savePath):
+	def download_dicts(self, save_path, categories=None, skip_category=False):
+		if not os.path.exists(save_path):
 			try:
-				os.mkdir(savePath)
+				os.mkdir(save_path)
 			except Exception as e:
 				print(e)
 		if not categories:
 			categories = []
 			for dict_nav_list in BeautifulSoup(
-				self.GetHtml("https://pinyin.sogou.com/dict/cate/index/1").text,
+				self.get_html("https://pinyin.sogou.com/dict/cate/index/1").text,
 				"html.parser",
 			).find_all("li", class_="nav_list"):
 				categories.append(dict_nav_list.a["href"].split("/")[-1])
 			categories.append("0")
 		for category in categories:
-			categoryPath = savePath + "/" + category
-			if not os.path.exists(categoryPath):
+			category_path = save_path + "/" + category
+			if not os.path.exists(category_path):
 				try:
-					os.mkdir(categoryPath)
+					os.mkdir(category_path)
 				except Exception as e:
 					print(e)
 			elif skip_category:
 				print(f"Category {category} already exists, skipping...")
 				continue
 			if category == "0":
-				downloadUrls = {
+				download_urls = {
 					"网络流行新词【官方推荐】": "https://pinyin.sogou.com/d/dict/download_cell.php?id=4&name=网络流行新词【官方推荐】"
 				}
 				for dict_td_list in BeautifulSoup(
-					self.GetHtml("https://pinyin.sogou.com/dict/detail/index/4").text,
+					self.get_html("https://pinyin.sogou.com/dict/detail/index/4").text,
 					"html.parser",
 				).find_all("div", class_="rcmd_dict"):
-					downloadUrls[
+					download_urls[
 						dict_td_list.find("div", class_="rcmd_dict_title").a.string
 					] = (
 						"https:"
 						+ dict_td_list.find("div", class_="rcmd_dict_dl_btn").a["href"]
 					)
-				self.Download(downloadUrls, categoryPath)
+				self.download(download_urls, category_path)
 			else:
 				if category == "167":
-					categoryUrls = []
+					category_urls = []
 					for dict_td_list in BeautifulSoup(
-						self.GetHtml(
+						self.get_html(
 							"https://pinyin.sogou.com/dict/cate/index/180"
 						).text,
 						"html.parser",
 					).find_all("div", class_="citylistcate"):
-						categoryUrls.append(
+						category_urls.append(
 							"https://pinyin.sogou.com" + dict_td_list.a["href"]
 						)
 				else:
-					categoryUrls = [
+					category_urls = [
 						"https://pinyin.sogou.com/dict/cate/index/" + category
 					]
-				for categoryUrl in categoryUrls:
+				for category_url in category_urls:
 					pages = (
-						BeautifulSoup(self.GetHtml(categoryUrl).text, "html.parser")
+						BeautifulSoup(self.get_html(category_url).text, "html.parser")
 						.find("div", id="dict_page_list")
 						.find_all("a")
 					)
@@ -98,18 +98,23 @@ class SougouSpider:
 					else:
 						page_n = int(pages[-2].string) + 1
 					for page in range(1, page_n):
-						downloadUrls = {}
+						download_urls = {}
 						for dict in BeautifulSoup(
-							self.GetHtml(categoryUrl + "/default/" + str(page)).text,
+							self.get_html(category_url + "/default/" + str(page)).text,
 							"html.parser",
 						).find_all("div", class_="dict_detail_block"):
-							downloadUrls[
-								dict.find("div", class_="detail_title").a.string
+							download_urls[
+								dict.find("div", class_="detail_title")
+								.a.string.replace("/", "-")
+								.replace(",", "-")
+								.replace("|", "-")
+								.replace("\\", "-")
+								.replace("'", "-")
 							] = dict.find("div", class_="dict_dl_btn").a["href"]
-						self.Download(downloadUrls, categoryPath)
+						self.download(download_urls, category_path)
 
 
-def check_valid_category_index(value):
+def check_category_index(value):
 	if not value.isdigit():
 		raise argparse.ArgumentTypeError(
 			"The index of a category must be a non-negative integer"
@@ -131,13 +136,13 @@ if __name__ == "__main__":
 		metavar="DIR",
 	)
 	parser.add_argument(
-		"--categories",
+		"--category",
 		"-c",
 		nargs="+",
-		type=check_valid_category_index,
-		help="Indexes of categories of dictionaries to be downloaded. Must be a non-negative integer.\n"
-		"Special index 0 is for dictionaries that do not belong to any categories.\n"
-		"Download all dictionaries by default.",
+		type=check_category_index,
+		help="List of category indexes (must be non-negative integers) to be downloaded.\n"
+		"Special category index 0 is for dictionaries that do not belong to any categories.\n"
+		"Download all categories (including 0) by default.",
 		metavar="CATEGORY",
 	)
 	parser.add_argument(
@@ -149,4 +154,4 @@ if __name__ == "__main__":
 	)
 	args = parser.parse_args()
 	SGSpider = SougouSpider()
-	SGSpider.DownloadDicts(args.directory, args.categories, args.skip_category)
+	SGSpider.download_dicts(args.directory, args.category, args.skip_category)
