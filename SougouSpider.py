@@ -28,13 +28,13 @@ class SougouSpider:
 		for keyDownload, urlDownload in downloadUrls.items():
 			filePath = categoryPath + "/" + keyDownload + ".scel"
 			if os.path.exists(filePath):
-				print(keyDownload + " already exists, skipping...")
+				print(f"{keyDownload}.scel already exists, skipping...")
 			else:
 				with open(filePath, "wb") as fw:
 					fw.write(self.GetHtml(urlDownload).content)
-					print(keyDownload + " download succeeded.")
+					print(f"{keyDownload}.scel download succeeded.")
 
-	def DownloadDicts(self, savePath, categories=None):
+	def DownloadDicts(self, savePath, categories=None, skip_category=False):
 		if not os.path.exists(savePath):
 			try:
 				os.mkdir(savePath)
@@ -47,6 +47,7 @@ class SougouSpider:
 				"html.parser",
 			).find_all("li", class_="nav_list"):
 				categories.append(dict_nav_list.a["href"].split("/")[-1])
+			categories.append("0")
 		for category in categories:
 			categoryPath = savePath + "/" + category
 			if not os.path.exists(categoryPath):
@@ -54,6 +55,9 @@ class SougouSpider:
 					os.mkdir(categoryPath)
 				except Exception as e:
 					print(e)
+			elif skip_category:
+				print(f"Category {category} already exists, skipping...")
+				continue
 			if category == "0":
 				downloadUrls = {
 					"网络流行新词【官方推荐】": "https://pinyin.sogou.com/d/dict/download_cell.php?id=4&name=网络流行新词【官方推荐】"
@@ -117,7 +121,7 @@ class SougouSpider:
 
 
 def check_valid_category_index(value):
-	if not value.isnumeric() or int(value) < 0:
+	if not value.isdigit():
 		raise argparse.ArgumentTypeError(
 			"The index of a category must be a non-negative integer"
 		)
@@ -130,17 +134,30 @@ if __name__ == "__main__":
 		formatter_class=argparse.RawTextHelpFormatter,
 	)
 	parser.add_argument(
-		"--path", "-p", default="sougou_dict", help="The path to save dictionaries", metavar="PATH"
+		"--directory",
+		"-d",
+		default="sougou_dict",
+		help="The directory to save dictionaries, which are divided by categories in DIR.\n"
+		"The default directory is sougou_dict.",
+		metavar="DIR",
 	)
 	parser.add_argument(
 		"--categories",
 		"-c",
 		nargs="+",
 		type=check_valid_category_index,
-		help="The indexes of categories of dictionaries to be downloaded. Must be a non-negative integer.\n"
-		"Special index 0 is for dictionaries that do not belong to any categories",
+		help="Indexes of categories of dictionaries to be downloaded. Must be a non-negative integer.\n"
+		"Special index 0 is for dictionaries that do not belong to any categories.\n"
+		"Download all dictionaries by default.",
 		metavar="CATEGORY",
+	)
+	parser.add_argument(
+		"--skip-category",
+		action=argparse.BooleanOptionalAction,
+		default=False,
+		help="Skip downloading entire category if the directory exists. Subcategories are not considered.\n"
+		"Only skip downloading single dictionary if the file exists by default.",
 	)
 	args = parser.parse_args()
 	SGSpider = SougouSpider()
-	SGSpider.DownloadDicts(args.path, args.categories)
+	SGSpider.DownloadDicts(args.directory, args.categories, args.skip_category)
