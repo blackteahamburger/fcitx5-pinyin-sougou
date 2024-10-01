@@ -1,7 +1,5 @@
 from bs4 import BeautifulSoup
-from urllib.parse import unquote
 import requests
-import re
 import os
 import argparse
 
@@ -90,33 +88,24 @@ class SougouSpider:
 						"https://pinyin.sogou.com/dict/cate/index/" + category
 					]
 				for categoryUrl in categoryUrls:
-					for page in range(
-						1,
-						int(
-							BeautifulSoup(self.GetHtml(categoryUrl).text, "html.parser")
-							.find("div", id="dict_page_list")
-							.find_all("a")[-2]
-							.string
-						)
-						+ 1,
-					):
+					pages = (
+						BeautifulSoup(self.GetHtml(categoryUrl).text, "html.parser")
+						.find("div", id="dict_page_list")
+						.find_all("a")
+					)
+					if len(pages) < 2:
+						page_n = 2
+					else:
+						page_n = int(pages[-2].string) + 1
+					for page in range(1, page_n):
 						downloadUrls = {}
-						for dict_dl_list in BeautifulSoup(
+						for dict in BeautifulSoup(
 							self.GetHtml(categoryUrl + "/default/" + str(page)).text,
 							"html.parser",
-						).find_all("div", class_="dict_dl_btn"):
-							dict_dl_url = dict_dl_list.a["href"]
+						).find_all("div", class_="dict_detail_block"):
 							downloadUrls[
-								unquote(
-									re.compile(r"name=(.*)").findall(dict_dl_url)[0],
-									"utf-8",
-								)
-								.replace("/", "-")
-								.replace(",", "-")
-								.replace("|", "-")
-								.replace("\\", "-")
-								.replace("'", "-")
-							] = dict_dl_url
+								dict.find("div", class_="detail_title").a.string
+							] = dict.find("div", class_="dict_dl_btn").a["href"]
 						self.Download(downloadUrls, categoryPath)
 
 
