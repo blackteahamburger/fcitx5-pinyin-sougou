@@ -23,6 +23,7 @@ class SougouSpider:
 			print(e)
 
 	def download(self, download_urls, category_path):
+		cnt = 0
 		for key_download, url_download in download_urls.items():
 			file_path = category_path + "/" + key_download + ".scel"
 			if os.path.exists(file_path):
@@ -31,6 +32,8 @@ class SougouSpider:
 				with open(file_path, "wb") as fw:
 					fw.write(self.get_html(url_download).content)
 					print(f"{key_download}.scel download succeeded.")
+					cnt += 1
+		return cnt
 
 	def download_dicts(self, save_path, categories=None, skip_category=False):
 		if not os.path.exists(save_path):
@@ -39,13 +42,13 @@ class SougouSpider:
 			except Exception as e:
 				print(e)
 		if not categories:
-			categories = []
+			categories = ["0"]
 			for dict_nav_list in BeautifulSoup(
 				self.get_html("https://pinyin.sogou.com/dict/cate/index/1").text,
 				"html.parser",
 			).find_all("li", class_="nav_list"):
 				categories.append(dict_nav_list.a["href"].split("/")[-1])
-			categories.append("0")
+		cnt = 0
 		for category in categories:
 			category_path = save_path + "/" + category
 			if not os.path.exists(category_path):
@@ -56,7 +59,7 @@ class SougouSpider:
 			elif skip_category:
 				print(f"Category {category} already exists, skipping...")
 				continue
-			if category == "0":
+			if category == "0":  # For dictionaries that do not belong to any categories
 				download_urls = {
 					"网络流行新词【官方推荐】": "https://pinyin.sogou.com/d/dict/download_cell.php?id=4&name=网络流行新词【官方推荐】"
 				}
@@ -70,9 +73,9 @@ class SougouSpider:
 						"https:"
 						+ dict_td_list.find("div", class_="rcmd_dict_dl_btn").a["href"]
 					)
-				self.download(download_urls, category_path)
+				cnt += self.download(download_urls, category_path)
 			else:
-				if category == "167":
+				if category == "167":  # Category 167 does not have a real page
 					category_urls = []
 					for dict_td_list in BeautifulSoup(
 						self.get_html(
@@ -93,25 +96,35 @@ class SougouSpider:
 						.find("div", id="dict_page_list")
 						.find_all("a")
 					)
-					if len(pages) < 2:
-						page_n = 2
-					else:
-						page_n = int(pages[-2].string) + 1
+					page_n = 2 if len(pages) < 2 else int(pages[-2].string) + 1
 					for page in range(1, page_n):
 						download_urls = {}
 						for dict in BeautifulSoup(
 							self.get_html(category_url + "/default/" + str(page)).text,
 							"html.parser",
 						).find_all("div", class_="dict_detail_block"):
+							key_download = dict.find("div", class_="detail_title").a
 							download_urls[
-								dict.find("div", class_="detail_title")
-								.a.string.replace("/", "-")
+								# For dictionaries like 天线行业/BSA
+								key_download.string.replace("/", "-")
 								.replace(",", "-")
 								.replace("|", "-")
 								.replace("\\", "-")
 								.replace("'", "-")
+								if key_download.string
+								# For dictionaries without a name like index 15946
+								else BeautifulSoup(
+									self.get_html(
+										"https://pinyin.sogou.com"
+										+ key_download["href"]
+									).text,
+									"html.parser",
+								)
+								.find("div", class_="dict_info_str")
+								.string
 							] = dict.find("div", class_="dict_dl_btn").a["href"]
-						self.download(download_urls, category_path)
+						cnt += self.download(download_urls, category_path)
+		print(f"Total download: {cnt} dictionaries.")
 
 
 def check_category_index(value):
