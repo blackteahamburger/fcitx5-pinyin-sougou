@@ -20,7 +20,7 @@ class SougouSpider:
 			session = requests.Session()
 			session.mount("https://", requests.adapters.HTTPAdapter(max_retries=5))
 			return session.get(url, headers=self.headers, timeout=5)
-		except requests.exceptions.Timeout as e:
+		except Exception as e:
 			print(e)
 
 	def download(self, name, url, category_path):
@@ -28,7 +28,14 @@ class SougouSpider:
 		if file_path.is_file():
 			print(f"{file_path} already exists, skipping...")
 		else:
-			file_path.write_bytes(self.get_html(url).content)
+			retries = 0  # To handle possible network problems
+			while not (content := self.get_html(url).content):
+				retries += 1
+				if retries == 5:
+					# For dictionaries like 威海地名
+					print(f"{file_path.name} is empty, skipping...")
+					return
+			file_path.write_bytes(content)
 			print(f"{file_path.name} download succeeded.")
 
 	def get_download_links(self, category_url, page, category_path):
