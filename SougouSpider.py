@@ -135,15 +135,15 @@ class SougouSpider:
 							.find_all("a")
 						)
 						page_n = 2 if len(pages) < 2 else int(pages[-2].string) + 1
-						result_futures += [
-							executor.submit(
-								self.get_download_links,
-								category_url,
-								page,
-								category_path,
+						for page in range(1, page_n):
+							result_futures.append(
+								executor.submit(
+									self.get_download_links,
+									category_url,
+									page,
+									category_path,
+								)
 							)
-							for page in range(1, page_n)
-						]
 			for future in concurrent.futures.as_completed(result_futures):
 				try:
 					download_urls, category_path = future.result()
