@@ -29,9 +29,10 @@ jobs:
           wget https://github.com/studyzy/imewlconverter/releases/download/preview/imewlconverter_Linux.tar.gz
           tar -zxf imewlconverter_Linux.tar.gz
 
+          echo "${GITHUB_WORKSPACE}/publish" >> "$GITHUB_PATH"
+
       - name: Build
         run: |
-          echo "${GITHUB_WORKSPACE}/publish" >> "$GITHUB_PATH"
           make sougou.dict sougou.dict.yaml
           tar -zcf sougou_dict.tar.gz sougou_dict
 
