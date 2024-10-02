@@ -44,7 +44,7 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          artifacts: "sougou.dict sougou.dict.yaml sougou_dict.tar.gz"
+          artifacts: "sougou.dict,sougou.dict.yaml,sougou_dict.tar.gz"
           commit: ${{ github.sha }}
           tag: ${{ steps.date.outputs.date }}
           allowUpdates: true

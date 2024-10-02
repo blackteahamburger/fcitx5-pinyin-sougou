@@ -58,7 +58,9 @@ class SougouSpider:
 			] = dict_td_list.find("div", class_="dict_dl_btn").a["href"]
 		return download_urls, category_path
 
-	def download_dicts(self, save_path, categories=None, skip_category=False):
+	def download_dicts(
+		self, save_path, categories=None, concurrent_downloads=16, skip_category=False
+	):
 		save_path.mkdir(parents=True, exist_ok=True)
 		if categories is None:
 			categories = ["0"]
@@ -67,7 +69,9 @@ class SougouSpider:
 				"html.parser",
 			).find_all("li", class_="nav_list"):
 				categories.append(dict_nav_list.a["href"].split("/")[-1])
-		with concurrent.futures.ThreadPoolExecutor(max_workers=16) as executor:
+		with concurrent.futures.ThreadPoolExecutor(
+			max_workers=concurrent_downloads
+		) as executor:
 			result_futures = []
 			for category in categories:
 				category_path = save_path / category
@@ -161,7 +165,7 @@ if __name__ == "__main__":
 		default="sougou_dict",
 		type=Path,
 		help="The directory to save dictionaries, which are divided by categories in DIR.\n"
-		"The default directory is sougou_dict.",
+		"Default: sougou_dict.",
 		metavar="DIR",
 	)
 	parser.add_argument(
@@ -175,6 +179,15 @@ if __name__ == "__main__":
 		metavar="CATEGORY",
 	)
 	parser.add_argument(
+		"--concurrent-downloads",
+		"-j",
+		default=16,
+		type=int,
+		choices=range(1, 17),
+		help="Set the number of parallel downloads.\n" "Default: 16",
+		metavar="N [1-17)",
+	)
+	parser.add_argument(
 		"--skip-category",
 		action=argparse.BooleanOptionalAction,
 		default=False,
@@ -186,5 +199,6 @@ if __name__ == "__main__":
 	SGSpider.download_dicts(
 		args.directory,
 		None if args.categories is None else list(set(args.categories)),
+		args.concurrent_downloads,
 		args.skip_category,
 	)
