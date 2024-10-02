@@ -5,6 +5,6 @@ recipe:
   description: >-
     Install Sougou Pinyin dictionary from fcitx5-pinyin-sougou
 download_files: >-
-  sougou.dict.yaml::https://github.com/blackteahamburger/fcitx5-pinyin-sougou/releases/download/00000000/sougou-00000000.dict.yaml
+  sougou.dict.yaml::https://github.com/blackteahamburger/fcitx5-pinyin-sougou/releases/download/20241002/sougou-20241002.dict.yaml
 install_files: >-
   sougou.dict.yaml
