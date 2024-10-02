@@ -25,7 +25,7 @@ Download latest version of `sougou.dict.yaml` from release and copy into `~/.loc
 ### Manual Build
 You need to download Sougou dictionaries first with `SougouSpider.py` or from release and make sure the dictionaries are put in `sougou_dict` directory.
 
-Build requirement: [imewlconverter](https://github.com/studyzy/imewlconverter) (make sure `ImeWlConverterCmd` is added to PATH)
+Build requirement: [imewlconverter (preview build)](https://github.com/studyzy/imewlconverter/releases/tag/preview) (make sure `ImeWlConverterCmd` is added to PATH)
 
 #### fcitx5
 Extra build requirement: [libime](https://github.com/fcitx/libime/)
