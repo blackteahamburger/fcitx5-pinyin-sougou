@@ -19,7 +19,9 @@ jobs:
           wget https://github.com/studyzy/imewlconverter/releases/download/preview/imewlconverter_Linux.tar.gz
           tar -zxf imewlconverter_Linux.tar.gz
 
-      - name: Build
+      - name: Set PATH
         run: |
           echo "${GITHUB_WORKSPACE}/publish" >> "$GITHUB_PATH"
+      - name: test run
+        run: |
           ImeWlConverterCmd
