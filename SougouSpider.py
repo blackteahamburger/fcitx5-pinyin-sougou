@@ -177,8 +177,8 @@ class SougouSpider:
 	def download_dicts(self, categories=None):
 		try:
 			self.save_path.mkdir(parents=True, exist_ok=True)
-			if categories is None:
-				categories = [
+			categories = (
+				[
 					"0",
 					*(
 						category.a["href"].partition("?")[0].rpartition("/")[-1]
@@ -188,6 +188,9 @@ class SougouSpider:
 						).find_all("div", class_="dict_category_list_title")
 					),
 				]
+				if categories is None
+				else list(set(categories))
+			)
 		except Exception as e:
 			logging.error(e)
 			sys.exit(1)
@@ -284,6 +287,4 @@ if __name__ == "__main__":
 		args.timeout,
 		args.keep_going,
 	) as SGSpider:
-		SGSpider.download_dicts(
-			None if args.categories is None else list(set(args.categories))
-		)
+		SGSpider.download_dicts(args.categories)
