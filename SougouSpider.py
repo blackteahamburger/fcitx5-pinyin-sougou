@@ -30,12 +30,12 @@ class SougouSpider:
 	):
 		self.save_path = save_path
 		self.skip_categories = skip_categories
-		self.concurrent_downloads = concurrent_downloads
 		self.max_retries = max_retries
 		self.timeout = timeout
 		self.keep_going = keep_going
 		self.headers = headers
-
+		self.__concurrent_downloads = concurrent_downloads
+		self.__verbose = verbose
 		self.__executor = concurrent.futures.ThreadPoolExecutor(concurrent_downloads)
 		self.__logger = logging.getLogger("SougouSpider")
 		logging.basicConfig(level=logging.INFO if verbose else logging.WARNING)
@@ -46,6 +46,14 @@ class SougouSpider:
 
 	def __exit__(self, exc_type, exc_val, exc_tb):
 		return self.__executor.__exit__(exc_type, exc_val, exc_tb)
+
+	@property
+	def concurrent_downloads(self):
+		return self.__concurrent_downloads
+
+	@property
+	def verbose(self):
+		return self.__verbose
 
 	def __create_category_dir(self, category, category_path):
 		if category_path.is_dir() and category in self.skip_categories:
@@ -75,11 +83,13 @@ class SougouSpider:
 		if file_path.is_file():
 			self.__logger.warning(f"{file_path} already exists, skipping...")
 			return
-		content = self.__get_html(url).content
-		# For dictionaries like 威海地名
-		if not content:
-			self.__logger.warning(f"{file_path.name} is empty, skipping...")
-			return
+		retries = 0
+		while not (content := self.get_html(url).content):
+			if retries == 5:
+				# For dictionaries like 威海地名
+				self.__logger.warning(f"{file_path.name} is empty, skipping...")
+				return
+			retries += 1
 		file_path.write_bytes(content)
 		self.__logger.info(f"{file_path.name} download succeeded.")
 
