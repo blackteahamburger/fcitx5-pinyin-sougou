@@ -185,7 +185,7 @@ class SougouSpider:
 					*(
 						category.a["href"].partition("?")[0].rpartition("/")[-1]
 						for category in BeautifulSoup(
-							self.__get_html("https://pinyin.sogou.com/dict").text,
+							self.__get_html("https://pinyin.sogou.com/dict/").text,
 							"html.parser",
 						).find_all("div", class_="dict_category_list_title")
 					),
