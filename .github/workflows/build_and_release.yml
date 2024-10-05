@@ -2,7 +2,7 @@ name: Build and release dictionary for Fcitx5 and RIME
 
 on:
   schedule:
-    - cron: '30 2 5 * *'
+    - cron: '30 23 5 * *'
   workflow_dispatch:
 
 jobs:
@@ -37,8 +37,9 @@ jobs:
 
       - name: Build
         run: |
-          make sougou.dict sougou.dict.yaml
+          make build_fcitx build_rime
           tar -zcf sougou_dict.tar.gz sougou_dict
+          tar -zcf baidu_dict.tar.gz baidu_dict
 
       - name: Get date
         id: date
@@ -48,30 +49,7 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          artifacts: "sougou.dict,sougou.dict.yaml,sougou_dict.tar.gz"
+          artifacts: "sougou.dict,sougou.dict.yaml,baidu.dict,baidu.dict.yaml,sougou_dict.tar.gz,baidu_dict.tar.gz"
           commit: ${{ github.sha }}
           tag: ${{ steps.date.outputs.date }}
           allowUpdates: true
-
-  update_recipe_yaml:
-    needs: build_and_release
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Get date
-        id: date
-        run: echo "date=$(date +%Y%m%d)" >> "$GITHUB_OUTPUT"
-
-      - name: Update recipe.yaml
-        run: |
-          sed -iEe '8s/[[:digit:]]{8}/${{ steps.date.outputs.date }}/g' recipe.yaml
-
-      - name: Commit & Push data
-        uses: actions-js/push@master
-        with:
-           github_token: ${{ secrets.GITHUB_TOKEN }}
-           message: "Chore: Update recipe.yaml"

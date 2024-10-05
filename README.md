@@ -1,6 +1,6 @@
-Sougou Pinyin dictionary for Fcitx5 and RIME.
+Sougou & Baidu Pinyin dictionary for Fcitx5 and RIME.
 
-Raw Sougou pinyin dictionary are automatically updated and released monthly by Github Action with `SougouSpider.py` (modified from [Sougou_dict_spider](https://github.com/StuPeter/Sougou_dict_spider)).
+Raw Sougou & Baidu pinyin dictionary are automatically updated and released monthly by Github Action with `SougouSpider.py` & `BaiduSpider.py` (modified from [Sougou_dict_spider](https://github.com/StuPeter/Sougou_dict_spider)).
 
 Dictionaries are also automatically built and released monthly for fcitx5 and rime by Github Action.
 
@@ -11,33 +11,27 @@ Dictionaries are also automatically built and released monthly for fcitx5 and ri
 ### Pre-built
 
 #### fcitx5
-Download latest version of `sougou.dict` from release and copy into `~/.local/share/fcitx5/pinyin/dictionaries/` (create the folder if it does not exist).
+Download latest version of `sougou.dict`/`baidu.dict` from release and copy into `~/.local/share/fcitx5/pinyin/dictionaries/` (create the folder if it does not exist).
 
 #### rime
-##### Plum
-```
-$ rime-install blackteahamburger/fcitx5-pinyin-sougou
-```
-
-##### Others
-Download latest version of `sougou.dict.yaml` from release and copy into `~/.local/share/fcitx5/rime/` for [fcitx5-rime](https://github.com/fcitx/fcitx5-rime) or `~/.config/ibus/rime/` for [ibus-rime](https://github.com/rime/ibus-rime) (create the folder if it does not exist).
+Download latest version of `sougou.dict.yaml`/`baidu.dict.yaml` from release and copy into `~/.local/share/fcitx5/rime/` for [fcitx5-rime](https://github.com/fcitx/fcitx5-rime) or `~/.config/ibus/rime/` for [ibus-rime](https://github.com/rime/ibus-rime) (create the folder if it does not exist).
 
 ### Manual Build
-You need to download Sougou dictionaries first with `SougouSpider.py` or from release and make sure the dictionaries are put in `sougou_dict` directory.
+You need to download Sougou/Baidu dictionaries first with `SougouSpider.py`/`BaiduSpider.py` or from release and make sure the dictionaries are put in `sougou_dict`/`baidu_dict` directory.
 
 Build requirement: [imewlconverter (preview build)](https://github.com/studyzy/imewlconverter/releases/tag/preview) (make sure `ImeWlConverterCmd` is added to PATH)
 
 #### fcitx5
 Extra build requirement: [libime](https://github.com/fcitx/libime/)
 ```
-$ make
-# make install
+$ make build_fcitx
+# make install_fcitx
 ```
 
 #### rime
 ```
-$ make sougou.dict.yaml
-# make install_rime_dict
+$ make build_rime
+# make install_rime
 ```
 
 ## License
