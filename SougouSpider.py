@@ -108,7 +108,7 @@ class SougouSpider:
 		]
 
 	def __download_category(self, category, save_path=None):
-		category_url = "https://pinyin.sogou.com/dict/cate/index" + category
+		category_url = "https://pinyin.sogou.com/dict/cate/index/" + category
 		soup = BeautifulSoup(self.__get_html(category_url).text, "html.parser")
 		if save_path is None:
 			save_path = self.save_path
