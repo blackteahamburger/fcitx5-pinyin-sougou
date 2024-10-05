@@ -2,6 +2,7 @@ import argparse
 import concurrent.futures
 import logging
 import os
+import re
 from pathlib import Path
 
 import requests
@@ -9,10 +10,10 @@ from bs4 import BeautifulSoup
 from requests.adapters import HTTPAdapter
 
 
-class SougouSpider:
+class BaiduSpider:
 	def __init__(
 		self,
-		save_path=Path("sougou_dict"),
+		save_path=Path("baidu_dict"),
 		skip_categories=[],
 		concurrent_downloads=os.cpu_count() * 2,
 		max_retries=5,
@@ -67,17 +68,15 @@ class SougouSpider:
 			return session.get(url, headers=self.headers, timeout=self.timeout)
 
 	def __download(self, name, url, category_path):
-		file_path = category_path / (name + ".scel")
+		file_path = category_path / (name + ".bdict")
 		if file_path.is_file():
 			self.logger.warning(f"{file_path} already exists, skipping...")
 			return
-		retries = 0
-		while not (content := self.__get_html(url).content):
-			if retries == 5:
-				# For dictionaries like 威海地名
-				self.logger.warning(f"{file_path.name} is empty, skipping...")
-				return
-			retries += 1
+		content = self.__get_html(url).content
+		# For dictionaries like 王者荣耀_4206103093
+		if not content:
+			self.logger.warning(f"{file_path.name} is empty, skipping...")
+			return
 		file_path.write_bytes(content)
 		self.logger.info(f"{file_path.name} download succeeded.")
 
@@ -85,95 +84,40 @@ class SougouSpider:
 		return [
 			self.__executor.submit(
 				self.__download,
-				(
-					# For dictionaries like 天线行业/BSA
-					dict_td_title.string.replace("/", "-")
-					.replace(",", "-")
-					.replace("|", "-")
-					.replace("\\", "-")
-					.replace("'", "-")
-					if (
-						dict_td_title := dict_td.find("div", class_="detail_title").a
-					).string
-					else ""  # For dictionaries without a name like index 15946
-				)
-				+ "_"
-				+ dict_td_title["href"].rpartition("/")[-1],
-				dict_td.find("div", class_="dict_dl_btn").a["href"],
+				# For dictionaries like 汽车常用词/术语
+				dict_td["dict-name"].replace("/", "-") + "_" + dict_td["dict-innerid"],
+				"https://shurufa.baidu.com/dict_innerid_download?innerid="
+				+ dict_td["dict-innerid"],
 				category_path,
 			)
 			for dict_td in BeautifulSoup(
 				self.__get_html(page_url).text, "html.parser"
-			).find_all("div", class_="dict_detail_block")
+			).find_all(
+				"a",
+				href="javascript:void(0)",
+				class_="dict-down dictClick",
+				title="立即下载",
+			)
 		]
 
-	def __download_category(self, category, save_path=None):
-		category_url = "https://pinyin.sogou.com/dict/cate/index" + category
+	def __download_category(self, category):
+		category_url = "https://shurufa.baidu.com/dict_list?cid=" + category
 		soup = BeautifulSoup(self.__get_html(category_url).text, "html.parser")
-		if save_path is None:
-			save_path = self.save_path
-		category_path = save_path / (
-			soup.find("title").string.partition("_")[0] + "_" + category
+		category_path = self.save_path / (
+			soup.find("title").string.rpartition("-")[-1] + "_" + category
 		)
 		if not self.__create_category_dir(category, category_path):
 			return
-		pages = soup.find("div", id="dict_page_list").find_all("a")
+		pages = soup.find_all(
+			"a", href=re.compile(r"dict_list\?cid=(\d+)&page=(\d+)#page")
+		)
 		return [
 			self.__executor.submit(
 				self.__download_page,
-				category_url + "/default/" + str(page),
+				category_url + "&page=" + str(page),
 				category_path,
 			)
 			for page in range(1, 2 if len(pages) < 2 else int(pages[-2].string) + 1)
-		]
-
-	def __download_category_167(self):
-		"""For category 167 that does not have a page"""
-		category_path = self.save_path / "城市信息大全_167"
-		if not self.__create_category_dir("167", category_path):
-			return
-		return [
-			self.__executor.submit(
-				self.__download_category,
-				category_td.a["href"].rpartition("/")[-1],
-				category_path,
-			)
-			for category_td in BeautifulSoup(
-				self.__get_html("https://pinyin.sogou.com/dict/cate/index/180").text,
-				"html.parser",
-			).find_all("div", class_="citylistcate")
-		]
-
-	def __download_category_0(self):
-		"""For dictionaries that do not belong to any categories"""
-		category_path = self.save_path / "未分类_0"
-		if not self.__create_category_dir("0", category_path):
-			return
-		return [
-			self.__executor.submit(
-				self.__download,
-				"网络流行新词【官方推荐】_4",
-				"https://pinyin.sogou.com/d/dict/download_cell.php?id=4&name=网络流行新词【官方推荐】",
-				category_path,
-			),
-			*(
-				self.__executor.submit(
-					self.__download,
-					(
-						dict_td_title := dict_td.find("div", class_="rcmd_dict_title").a
-					).string
-					+ "_"
-					+ dict_td_title["href"].rpartition("/")[-1],
-					"https:" + dict_td.find("div", class_="rcmd_dict_dl_btn").a["href"],
-					category_path,
-				)
-				for dict_td in BeautifulSoup(
-					self.__get_html(
-						"https://pinyin.sogou.com/dict/detail/index/4"
-					).text,
-					"html.parser",
-				).find_all("div", class_="rcmd_dict")
-			),
 		]
 
 	def download_dicts(self, categories=None):
@@ -181,24 +125,19 @@ class SougouSpider:
 			self.save_path.mkdir(parents=True, exist_ok=True)
 			categories = (
 				[
-					"0",
-					*(
-						category.a["href"].partition("?")[0].rpartition("/")[-1]
-						for category in BeautifulSoup(
-							self.__get_html("https://pinyin.sogou.com/dict").text,
-							"html.parser",
-						).find_all("div", class_="dict_category_list_title")
-					),
+					category["href"].partition("=")[-1]
+					for category in BeautifulSoup(
+						self.__get_html("https://shurufa.baidu.com/dict").text,
+						"html.parser",
+					).find_all(
+						"a", attrs={"data-stats": "webDictPage.dictSort.category1"}
+					)
 				]
 				if categories is None
 				else list(set(categories))
 			)
 			self.__recursive_as_completed([
-				self.__executor.submit(self.__download_category_0)
-				if category == "0"
-				else self.__executor.submit(self.__download_category_167)
-				if category == "167"
-				else self.__executor.submit(self.__download_category, category)
+				self.__executor.submit(self.__download_category, category)
 				for category in categories
 			])
 		except Exception as e:
@@ -209,15 +148,15 @@ class SougouSpider:
 
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser(
-		description="A Sougou dictionary spider.",
+		description="A Baidu dictionary spider.",
 		formatter_class=argparse.RawTextHelpFormatter,
 	)
 	parser.add_argument(
 		"--directory",
 		"-d",
-		default="sougou_dict",
+		default="baidu_dict",
 		type=Path,
-		help="The directory to save dictionaries.\n" "Default: sougou_dict.",
+		help="The directory to save dictionaries.\n" "Default: baidu_dict.",
 		metavar="DIR",
 	)
 	parser.add_argument(
@@ -225,8 +164,6 @@ if __name__ == "__main__":
 		"-c",
 		nargs="+",
 		help="List of category indexes to be downloaded.\n"
-		"Categories are not separated to their subcategories except category 167 since it does not have a webpage.\n"
-		"Special category 0 is for dictionaries that do not belong to any categories.\n"
 		"Download all categories (including 0) by default.",
 		metavar="CATEGORY",
 	)
@@ -278,16 +215,16 @@ if __name__ == "__main__":
 		help="Continue as much as possible after an error.\n" "Default: False",
 	)
 	args = parser.parse_args()
-	with SougouSpider(
+	with BaiduSpider(
 		args.directory,
 		args.skip_categories,
 		args.concurrent_downloads,
 		args.max_retries,
 		args.timeout,
 		args.keep_going,
-	) as SGSpider:
+	) as BDSpider:
 		logging.basicConfig(
 			format="%(levelname)s:%(message)s",
 			level=logging.INFO if args.verbose else logging.WARNING,
 		)
-		SGSpider.download_dicts(args.categories)
+		BDSpider.download_dicts(args.categories)

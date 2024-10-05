@@ -2,7 +2,7 @@ name: Build and release dictionary for Fcitx5 and RIME
 
 on:
   schedule:
-    - cron: '30 0 1 * *'
+    - cron: '30 2 5 * *'
   workflow_dispatch:
 
 jobs:
@@ -16,6 +16,10 @@ jobs:
 
       - name: Prepare Environment for Fetch
         run: pip3 install beautifulsoup4
+
+      - name: Fetch Baidu dict
+        run: |
+          python3 BaiduSpider.py -v -j 16
 
       - name: Fetch Sougou dict
         run: |
@@ -64,7 +68,7 @@ jobs:
 
       - name: Update recipe.yaml
         run: |
-          sed -i -e '8s/[0-9]\{8\}/${{ steps.date.outputs.date }}/g' recipe.yaml
+          sed -iEe '8s/[[:digit:]]{8}/${{ steps.date.outputs.date }}/g' recipe.yaml
 
       - name: Commit & Push data
         uses: actions-js/push@master
