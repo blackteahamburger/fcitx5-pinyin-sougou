@@ -19,7 +19,7 @@ jobs:
 
       - name: Fetch Sougou dict
         run: |
-          python3 SougouSpider.py
+          python3 SougouSpider.py -v -j 16
 
       - name: Prepare Environment for Build
         run: |

@@ -18,7 +18,6 @@ class SougouSpider:
 		concurrent_downloads=os.cpu_count() * 2,
 		max_retries=5,
 		timeout=60.0,
-		verbose=True,
 		keep_going=False,
 		headers={
 			"User-Agent": "Mozilla/5.0 (Windows NT 10.0; WOW64; rv:60.0) Gecko/20100101 Firefox/60.0",
@@ -34,11 +33,10 @@ class SougouSpider:
 		self.timeout = timeout
 		self.keep_going = keep_going
 		self.headers = headers
+		self.logger = logging.getLogger(__name__)
+		self.logger.addHandler(logging.NullHandler())
 		self.__concurrent_downloads = concurrent_downloads
-		self.__verbose = verbose
 		self.__executor = concurrent.futures.ThreadPoolExecutor(concurrent_downloads)
-		self.__logger = logging.getLogger("SougouSpider")
-		logging.basicConfig(level=logging.INFO if verbose else logging.WARNING)
 
 	def __enter__(self):
 		self.__executor.__enter__()
@@ -51,13 +49,9 @@ class SougouSpider:
 	def concurrent_downloads(self):
 		return self.__concurrent_downloads
 
-	@property
-	def verbose(self):
-		return self.__verbose
-
 	def __create_category_dir(self, category, category_path):
 		if category_path.is_dir() and category in self.skip_categories:
-			self.__logger.info(f"{category_path} already exists, skipping...")
+			self.logger.info(f"{category_path} already exists, skipping...")
 			return False
 		category_path.mkdir(exist_ok=True)
 		return True
@@ -69,7 +63,7 @@ class SougouSpider:
 			try:
 				self.__recursive_as_completed(future.result())
 			except Exception as e:
-				self.__logger.error(e)
+				self.logger.error(e)
 				if not self.keep_going:
 					sys.exit(1)
 
@@ -81,17 +75,17 @@ class SougouSpider:
 	def __download(self, name, url, category_path):
 		file_path = category_path / (name + ".scel")
 		if file_path.is_file():
-			self.__logger.warning(f"{file_path} already exists, skipping...")
+			self.logger.warning(f"{file_path} already exists, skipping...")
 			return
 		retries = 0
-		while not (content := self.get_html(url).content):
+		while not (content := self.__get_html(url).content):
 			if retries == 5:
 				# For dictionaries like 威海地名
-				self.__logger.warning(f"{file_path.name} is empty, skipping...")
+				self.logger.warning(f"{file_path.name} is empty, skipping...")
 				return
 			retries += 1
 		file_path.write_bytes(content)
-		self.__logger.info(f"{file_path.name} download succeeded.")
+		self.logger.info(f"{file_path.name} download succeeded.")
 
 	def __download_page(self, page_url, category_path):
 		return [
@@ -206,7 +200,7 @@ class SougouSpider:
 				else list(set(categories))
 			)
 		except Exception as e:
-			self.__logger.error(e)
+			self.logger.error(e)
 			sys.exit(1)
 		self.__recursive_as_completed([
 			self.__executor.submit(self.__download_category_0)
@@ -278,8 +272,8 @@ if __name__ == "__main__":
 		"--verbose",
 		"-v",
 		action=argparse.BooleanOptionalAction,
-		default=True,
-		help="Verbose output.\n" "Default: True",
+		default=False,
+		help="Verbose output.\n" "Default: False",
 	)
 	parser.add_argument(
 		"--keep-going",
@@ -295,7 +289,10 @@ if __name__ == "__main__":
 		args.concurrent_downloads,
 		args.max_retries,
 		args.timeout,
-		args.verbose,
 		args.keep_going,
 	) as SGSpider:
+		logging.basicConfig(
+			format="%(levelname)s:%(message)s",
+			level=logging.INFO if args.verbose else logging.WARNING,
+		)
 		SGSpider.download_dicts(args.categories)
