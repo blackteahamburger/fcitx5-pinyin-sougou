@@ -24,11 +24,11 @@ sougou.dict.yaml: sougou.source.rime
 
 baidu.source.fcitx:
 	test -d baidu_dict || { echo The baidu_dict folder does not exist!; exit 1; }
-	ImeWlConverterCmd -i:bdpy baidu_dict -o:libimetxt baidu.source.fcitx
+	ImeWlConverterCmd -i:bdict baidu_dict -o:libimetxt baidu.source.fcitx
 
 baidu.source.rime:
 	test -d baidu_dict || { echo The baidu_dict folder does not exist!; exit 1; }
-	ImeWlConverterCmd -i:bdpy baidu_dict -o:rime baidu.source.rime
+	ImeWlConverterCmd -i:bdict baidu_dict -o:rime baidu.source.rime
 
 baidu.dict: baidu.source.fcitx
 	sed -i -e 's/lue/lve/g' -e 's/nue/nve/g' baidu.source.fcitx # Temp fix for https://github.com/studyzy/imewlconverter/issues/328
